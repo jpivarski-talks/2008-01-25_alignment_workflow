@@ -1,0 +1,205 @@
+\documentclass[compress]{beamer}
+\usepackage{ifthen,verbatim}
+
+\title{Muon Alignment Workflow \\ with the HIP Algorithm}
+\author{Jim Pivarski, Alexei Safonov, Karoly Banicz}
+\institute{Texas A\&M University}
+\date{25 January, 2008}
+
+\newcommand{\isnote}{}
+\xdefinecolor{lightyellow}{rgb}{1.,1.,0.25}
+\xdefinecolor{darkblue}{rgb}{0.1,0.1,0.7}
+
+%% Uncomment this to get annotations
+%% \def\notes{\addtocounter{page}{-1}
+%%            \renewcommand{\isnote}{*}
+%% 	   \beamertemplateshadingbackground{lightyellow}{white}
+%%            \begin{frame}
+%%            \frametitle{Notes for the previous page (page \insertpagenumber)}
+%%            \itemize}
+%% \def\endnotes{\enditemize
+%% 	      \end{frame}
+%%               \beamertemplateshadingbackground{white}{white}
+%%               \renewcommand{\isnote}{}}
+
+%% Uncomment this to not get annotations
+\def\notes{\comment}
+\def\endnotes{\endcomment}
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{headline}{\includegraphics[height=1 cm]{../cmslogo} \hspace{0.1 cm} \includegraphics[height=1 cm]{../tamulogo} \hfill
+\begin{minipage}{5.5 cm}
+\vspace{-0.75 cm} \small
+\begin{center}
+\ifthenelse{\equal{\insertpagenumber}{1}}{}{\textcolor{blue}{\insertsection}}
+\end{center}
+\end{minipage} \hfill
+\begin{minipage}{4.5 cm}
+\vspace{-0.75 cm} \small
+\begin{flushright}
+\ifthenelse{\equal{\insertpagenumber}{1}}{}{Jim Pivarski \hspace{0.5 cm} \insertpagenumber\isnote/\pageref{numpages}}
+\end{flushright}
+\end{minipage}\mbox{\hspace{0.2 cm}}}
+
+\begin{document}
+\frame{\titlepage}
+
+%% \begin{notes}
+%% \item This is the annotated version of my talk.
+%% \item If you want the version that I am presenting, download the one
+%% labeled ``slides'' on Indico (or just ignore these yellow pages).
+%% \item The annotated version is provided for extra detail and a written
+%% record of comments that I intend to make orally.
+%% \item Yellow notes refer to the content on the {\it previous} page.
+%% \item All other slides are identical for the two versions.
+%% \end{notes}
+
+\begin{frame}
+\frametitle{Muon-HIP alignment procedures (in chronological order)}
+\begin{enumerate}\setlength{\itemsep}{0.35 cm}
+\item \textcolor{darkblue}{Cosmics/beam-halo alignment}
+\begin{itemize}
+\item Aligning chambers relative to wheel/disk, and maybe layers within chambers, depending on rate
+\item Manually configured and operated, like an offline analysis
+\item Data acquired before first collisions (trigger?)
+\item Developer: Karoly Banicz
+\end{itemize}
+
+\item \textcolor{darkblue}{1~pb$^{-1}$ alignment}
+\begin{itemize}
+\item Aligning wheels/disks relative to tracker
+\item Manually configured and operated, run on the CAF
+\item Developer: Jim Pivarski
+\end{itemize}
+
+\item \textcolor{darkblue}{10~pb$^{-1}$ and 100~pb$^{-1}$ alignments}
+\begin{itemize}
+\item Aligning chambers relative to the tracker
+\item Automated and parallelized, run on the CAF
+\item (More detail on following pages)
+\end{itemize}
+\end{enumerate}
+\end{frame}
+
+\begin{frame}
+\frametitle{Workflow for 10 and 100~pb$^{-1}$ alignments}
+\begin{itemize}
+\item 9 passes, the first having 15 iterations, the rest 5 (total of 55)
+\begin{itemize}
+\item First align wheels and disks, slow convergence
+\item Next align innermost muon stations
+\item Then fix innermost and align next, etc.
+\item Then allow everything to float when close to optimum
+\end{itemize}
+\item Data from $W+Z$ and muons from QCD, controlled by a $p_T$ cut
+and an ``outermost station residual'' cut (new code)
+\end{itemize}
+
+\textcolor{darkblue}{For 100~pb$^{-1}$:}
+\begin{itemize}
+\item Assuming all $W+Z$ and no QCD: 714,000 events
+\item 54 CPUs + 1 control job
+\item 11 min/iter $\to$ 10 hours wall time (3 min CPU time/iter\ldots)
+\item 7 MB/iter output on {\it local} disk $\to$ 400 MB
+\item Typical max memory: 300 MB, max swap: 700 MB
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Implementation details}
+\begin{itemize}\setlength{\itemsep}{0.2 cm}
+\item Single perl script creates all necessary directories and
+configuration files; easy to stop and restart a half-finished job
+\item One control job submits parallel sub-processes, waits for them to finish
+\begin{itemize}
+\item If this runs on the CAF, a CPU spends most of its time sleeping
+\item Recently (last two days), a job running on CAF cannot successfully submit jobs
+\end{itemize}
+
+\item Muon geometry is passed from one iteration to the next via
+SQLite files: last one copied into database by hand
+
+\item Residuals monitoring through CommonAlignmentMonitor
+
+\item Alignment monitoring through MuonGeometryIntoNtuples
+
+\item For MC, combine datasets at the level of parameter matrices
+(individual subjobs run on pure samples)
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Work to be done}
+\textcolor{darkblue}{Cosmics/beam-halo chambers-on-disk, layers-in-chambers:}
+\begin{itemize}
+\item Understand pre-collisions trigger menu
+\item Develop procedure on MC (beam-halo rate is ``factor-of-ten''
+uncertain: level of feasibility will not be fully known)
+\item Apply immediately to data as it becomes available (including
+MTCC/GRE$x$ already available)
+\item Our first priority is CSC alignment with beam-halo
+\end{itemize}
+
+\vfill
+\textcolor{darkblue}{1~pb$^{-1}$ wheel/disk alignment to tracker:}
+\begin{itemize}
+\item Experience already shows this is feasible
+\item Open question: will we be able to connect with chambers-on-disk
+(above)?  Will $\vec{B}$ be ramped in between?
+\item Study application of hardware alignment constraints using
+survey-constraint mechanism
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Work to be done}
+\textcolor{darkblue}{10/100~pb$^{-1}$ chambers to tracker:}
+\begin{itemize}
+\item Run procedure (very close: only CAF problems)
+\item Submit new code, not strictly needed for 2\_0\_0 deadline, but we will aim for that
+\begin{itemize}
+\item Should the track-filter become an optional AlCaReco switch?  \\ I will present an implementation
+\item Alternate track-refitter (not part of baseline procedure, but we want to test its performance)
+\item All configuration and plotting scripts
+\end{itemize}
+\item Combine datasets, determine optimal cut and preferred parameters
+for AlCaReco producer
+
+(to be coordinated with MillePede muon alignment group)
+\item Systematics studies
+\begin{itemize}
+\item Needs disk space!  400~MB $\times$ several configurations
+\item Work in 1\_6\_7 with large data samples
+\end{itemize}
+\item Layer alignment feasibility study
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Conclusions}
+\textcolor{darkblue}{Requests:}
+\begin{itemize}
+\item CAF/lxplus-accessible disk space (10 GB)
+\item Submitting-from-CAF issue \\ (or ``long-running, mostly-sleeping job'' issue)
+\item Occasional overnight use of 50 CPUs
+\end{itemize}
+
+\vfill
+\textcolor{darkblue}{Very na\"ive question about CSA08:}
+\begin{itemize}\setlength{\itemsep}{0.5 cm}
+\item I don't think this is related to CSA08\ldots should it be?
+\end{itemize}
+
+\vfill
+\textcolor{darkblue}{Status:}
+\begin{itemize}
+\item Baseline 100~pb$^{-1}$ procedure is almost in good shape: \\ early
+tests show 300--800~$\mu$m, depending on station
+\item Need to do controlled study with full workflow on CAF
+\item Once that's in place, we focus attention on early alignment
+\end{itemize}
+
+\label{numpages}
+\end{frame}
+
+\end{document}
